@@ -102,13 +102,10 @@ export async function POST(request: NextRequest) {
 
 async function processWinnings(drawId: string, winningNumbers: number[]) {
   try {
-    // Get all pending bets for this draw type
+    // Get all pending bets (all bet types can win against any draw)
     const pendingBets = await db.bet.findMany({
       where: {
-        status: 'pending',
-        betType: {
-          contains: winningNumbers.length.toString()
-        }
+        status: 'pending'
       },
       include: {
         user: true
@@ -117,7 +114,7 @@ async function processWinnings(drawId: string, winningNumbers: number[]) {
 
     for (const bet of pendingBets) {
       const betNumbers = JSON.parse(bet.numbers)
-      const isWinner = checkWin(betNumbers, winningNumbers)
+      const isWinner = checkWin(betNumbers, winningNumbers, bet.betType)
       
       if (isWinner) {
         const winAmount = calculateWinAmount(bet.amount, bet.betType)
@@ -165,21 +162,224 @@ async function processWinnings(drawId: string, winningNumbers: number[]) {
   }
 }
 
-function checkWin(betNumbers: number[], winningNumbers: number[]): boolean {
-  // Simple exact match for now
-  // In a real system, you might have different winning conditions
-  return JSON.stringify(betNumbers) === JSON.stringify(winningNumbers)
+function checkWin(betNumbers: number[], winningNumbers: number[], betType: string): boolean {
+  const betNumStr = betNumbers.join('')
+  const winNumStr = winningNumbers.join('')
+  
+  switch (betType) {
+    // Basic betting types
+    case '2D':
+      return betNumStr === winNumStr.slice(-2)
+      
+    case '3D':
+      return betNumStr === winNumStr.slice(-3)
+      
+    case '4D':
+      return betNumStr === winNumStr
+      
+    case '2D Depan':
+      return betNumStr === winNumStr.slice(0, 2)
+      
+    case '2D Tengah':
+      return betNumStr === winNumStr.slice(1, 3)
+      
+    case '2D Belakang':
+      return betNumStr === winNumStr.slice(-2)
+      
+    // Colok betting types
+    case 'Colok Bebas':
+      return betNumbers.some(num => winningNumbers.includes(num))
+      
+    case 'Colok Bebas 2D':
+      return betNumbers.every(num => winningNumbers.includes(num))
+      
+    case 'Colok Naga':
+      return betNumbers.every(num => winningNumbers.includes(num))
+      
+    case 'Colok Jitu':
+      // Format: "digit-position" (e.g., "8-0" for position 0/As)
+      if (betNumbers.length === 2) {
+        const [digit, position] = betNumbers
+        return winningNumbers[position] === digit
+      }
+      return false
+      
+    // Combination betting types
+    case '50:50':
+      return check5050(betNumStr, winNumStr)
+      
+    case 'Shio':
+      return checkShio(betNumbers[0], winNumStr)
+      
+    case 'Tengah Tepi':
+      const choiceTT = betNumStr.toLowerCase()
+      const isTengah = checkTengahTepi(parseInt(winNumStr.slice(-2)))
+      if (choiceTT === 'tengah' || choiceTT === 't') return isTengah
+      if (choiceTT === 'tepi' || choiceTT === 'tp') return !isTengah
+      return false
+      
+    case 'Dasar':
+      return checkDasar(betNumStr, winNumStr)
+      
+    // Special betting types
+    case 'Macau':
+      return betNumbers.every(num => winningNumbers.includes(num))
+      
+    // BBFS betting types
+    case 'BBFS 2D':
+      return checkBBFS2D(betNumStr, winNumStr.slice(-2))
+      
+    case 'BBFS 3D':
+      return checkBBFS3D(betNumStr, winNumStr.slice(-3))
+      
+    case 'BBFS 4D':
+      return checkBBFS4D(betNumStr, winNumStr)
+      
+    default:
+      return false
+  }
+}
+
+// Helper functions for specific betting types
+function check5050(betChoice: string, winNumStr: string): boolean {
+  const last2Digits = parseInt(winNumStr.slice(-2))
+  const isGanjil = last2Digits % 2 === 1
+  const isGenap = !isGanjil
+  const isBesar = last2Digits >= 50
+  const isKecil = !isBesar
+  
+  const choice = betChoice.toUpperCase()
+  
+  if (choice === 'G' || choice === 'GANJIL') return isGanjil
+  if (choice === 'GENAP') return isGenap
+  if (choice === 'B' || choice === 'BESAR') return isBesar
+  if (choice === 'K' || choice === 'KECIL') return isKecil
+  
+  // Combined choices
+  if (choice === 'GB') return isGanjil && isBesar
+  if (choice === 'GK') return isGanjil && isKecil
+  if (choice === 'BB') return isGenap && isBesar
+  if (choice === 'BK') return isGenap && isKecil
+  
+  return false
+}
+
+function checkShio(shioNum: number, winNumStr: string): boolean {
+  const last2Digits = parseInt(winNumStr.slice(-2))
+  const shioMapping = [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+  ]
+  return shioMapping[last2Digits] === shioNum
+}
+
+function checkTengahTepi(last2Digits: number): boolean {
+  return last2Digits >= 25 && last2Digits <= 74
+}
+
+function checkDasar(betChoice: string, winNumStr: string): boolean {
+  const last2Digits = parseInt(winNumStr.slice(-2))
+  const isGanjil = last2Digits % 2 === 1
+  const isGenap = !isGanjil
+  const isBesar = last2Digits >= 50
+  const isKecil = !isBesar
+  
+  const choice = betChoice.toUpperCase()
+  
+  if (choice === 'GB') return isGanjil && isBesar
+  if (choice === 'GK') return isGanjil && isKecil
+  if (choice === 'BB') return isGenap && isBesar
+  if (choice === 'BK') return isGenap && isKecil
+  
+  return false
+}
+
+function checkBBFS2D(betNumStr: string, winLast2Digits: string): boolean {
+  // Check all permutations for BBFS 2D
+  const permutations = [betNumStr, betNumStr.split('').reverse().join('')]
+  return permutations.includes(winLast2Digits)
+}
+
+function checkBBFS3D(betNumStr: string, winLast3Digits: string): boolean {
+  // Check all 6 permutations for BBFS 3D
+  const digits = betNumStr.split('')
+  const permutations = []
+  
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      for (let k = 0; k < 3; k++) {
+        if (i !== j && i !== k && j !== k) {
+          permutations.push(digits[i] + digits[j] + digits[k])
+        }
+      }
+    }
+  }
+  
+  return permutations.includes(winLast3Digits)
+}
+
+function checkBBFS4D(betNumStr: string, winNumStr: string): boolean {
+  // Check all 24 permutations for BBFS 4D
+  const digits = betNumStr.split('')
+  const permutations = []
+  
+  // Generate all permutations of 4 digits
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 4; j++) {
+      for (let k = 0; k < 4; k++) {
+        for (let l = 0; l < 4; l++) {
+          if (i !== j && i !== k && i !== l && j !== k && j !== l && k !== l) {
+            permutations.push(digits[i] + digits[j] + digits[k] + digits[l])
+          }
+        }
+      }
+    }
+  }
+  
+  return permutations.includes(winNumStr)
 }
 
 function calculateWinAmount(betAmount: number, betType: string): number {
-  // Different multipliers for different bet types
+  // Prize multipliers matching frontend configuration
   const multipliers = {
-    '2D': 50,
+    // Basic betting types
+    '2D': 70,
     '3D': 400,
-    '4D': 3000
+    '4D': 3000,
+    '2D Depan': 70,
+    '2D Tengah': 70,
+    '2D Belakang': 70,
+    
+    // Colok betting types
+    'Colok Bebas': 1.5,
+    'Colok Bebas 2D': 6,
+    'Colok Naga': 20,
+    'Colok Jitu': 8,
+    
+    // Combination betting types
+    '50:50': 1.9,
+    'Shio': 9,
+    'Tengah Tepi': 1.8,
+    'Dasar': 1.5,
+    
+    // Special betting types
+    'Macau': 6,
+    
+    // BBFS betting types
+    'BBFS 2D': 35,
+    'BBFS 3D': 200,
+    'BBFS 4D': 1500
   }
   
-  return betAmount * (multipliers[betType as keyof typeof multipliers] || 1)
+  const multiplier = multipliers[betType as keyof typeof multipliers] || 1
+  return Math.floor(betAmount * multiplier)
 }
 
 export async function GET() {
