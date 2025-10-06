@@ -13,6 +13,7 @@ import {
   Volume2,
   VolumeX
 } from 'lucide-react'
+import { io, Socket } from 'socket.io-client'
 
 export default function LiveDraw() {
   const [countdown, setCountdown] = useState(3600)
@@ -21,20 +22,35 @@ export default function LiveDraw() {
   const [drawHistory, setDrawHistory] = useState([])
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [nextDrawNumber, setNextDrawNumber] = useState(6)
+  const [socket, setSocket] = useState<Socket | null>(null)
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 0) {
-          triggerNewDraw()
-          return 3600 // Reset to 1 hour
-        }
-        return prev - 1
-      })
-    }, 1000)
+    // Initialize Socket.IO connection
+    const newSocket = io()
+    setSocket(newSocket)
 
+    // Listen for timer updates
+    newSocket.on('timer_update', (data: any) => {
+      setCountdown(Math.floor(data.remaining / 1000))
+      setNextDrawNumber(data.drawNumber + 1)
+    })
+
+    // Listen for new round events
+    newSocket.on('new_round', (data: any) => {
+      console.log('New round started:', data.drawNumber)
+      setNextDrawNumber(data.drawNumber + 1)
+      // Trigger draw animation when new round starts
+      triggerNewDraw()
+    })
+
+    // Cleanup on unmount
+    return () => {
+      newSocket.close()
+    }
+  }, [])
+
+  useEffect(() => {
     fetchDrawHistory()
-    return () => clearInterval(timer)
   }, [])
 
   const fetchDrawHistory = async () => {

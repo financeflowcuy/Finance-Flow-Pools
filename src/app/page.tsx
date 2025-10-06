@@ -24,12 +24,15 @@ import {
   UserPlus,
   LogIn,
   Crown,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from 'lucide-react'
+import { io, Socket } from 'socket.io-client'
 
 export default function BatikPoolsLanding() {
   const [lastResults, setLastResults] = useState<any[]>([])
   const [nextDrawTime, setNextDrawTime] = useState(300)
+  const [drawNumber, setDrawNumber] = useState(1)
   const [showLogin, setShowLogin] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -40,6 +43,52 @@ export default function BatikPoolsLanding() {
   const [loginError, setLoginError] = useState('')
   const [registerError, setRegisterError] = useState('')
   const [registerSuccess, setRegisterSuccess] = useState('')
+  const [socket, setSocket] = useState<Socket | null>(null)
+  
+  // Maintenance state
+  const [isMaintenance, setIsMaintenance] = useState(false)
+  const [maintenanceMessage, setMaintenanceMessage] = useState('')
+  const [isPaused, setIsPaused] = useState(false)
+
+  useEffect(() => {
+    // Initialize Socket.IO connection
+    const newSocket = io()
+    setSocket(newSocket)
+
+    // Listen for timer updates
+    newSocket.on('timer_update', (data: any) => {
+      setNextDrawTime(Math.floor(data.remaining / 1000)) // Convert to seconds
+      setDrawNumber(data.drawNumber)
+      setIsMaintenance(data.isMaintenance)
+      setMaintenanceMessage(data.maintenanceMessage)
+      setIsPaused(data.isPaused)
+    })
+
+    // Listen for maintenance events
+    newSocket.on('maintenance_started', (data: any) => {
+      console.log('Maintenance started:', data)
+      setIsMaintenance(true)
+      setMaintenanceMessage(data.message)
+    })
+
+    newSocket.on('maintenance_ended', (data: any) => {
+      console.log('Maintenance ended:', data)
+      setIsMaintenance(false)
+      setMaintenanceMessage('')
+    })
+
+    // Listen for new round events
+    newSocket.on('new_round', (data: any) => {
+      console.log('New round started:', data.drawNumber)
+      // Refresh draw results when new round starts
+      fetchLandingData()
+    })
+
+    // Cleanup on unmount
+    return () => {
+      newSocket.close()
+    }
+  }, [])
 
   useEffect(() => {
     // Clear all cookies on page load to prevent redirect loop
@@ -66,7 +115,6 @@ export default function BatikPoolsLanding() {
           setTotalBets(data.data.totalBets)
           setTotalWinnings(data.data.totalWinnings)
           setAnnouncements(data.data.announcements)
-          setNextDrawTime(data.data.drawInterval * 60) // Convert minutes to seconds
         }
       } catch (error) {
         console.error('Failed to fetch landing data:', error)
@@ -76,11 +124,6 @@ export default function BatikPoolsLanding() {
     }
 
     fetchLandingData()
-
-    const timer = setInterval(() => {
-      setNextDrawTime(prev => prev > 0 ? prev - 1 : 300)
-    }, 1000)
-    return () => clearInterval(timer)
   }, [])
 
   const formatTime = (seconds: number) => {
@@ -330,6 +373,22 @@ export default function BatikPoolsLanding() {
           </div>
         </div>
       </nav>
+
+      {/* Maintenance Banner */}
+      {isMaintenance && (
+        <div className="bg-red-600 border-b border-red-700">
+          <div className="w-full max-w-screen-xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-center space-x-3">
+              <AlertTriangle className="w-6 h-6 text-white animate-pulse" />
+              <div className="text-center">
+                <h3 className="text-white font-bold text-lg">Sedang Dalam Perbaikan</h3>
+                <p className="text-white/90 text-sm">{maintenanceMessage || 'Sistem sedang dalam perbaikan. Mohon tunggu beberapa saat.'}</p>
+              </div>
+              <AlertTriangle className="w-6 h-6 text-white animate-pulse" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero Section */}
       <section className="relative py-12 sm:py-16 lg:py-20 px-4 overflow-hidden">

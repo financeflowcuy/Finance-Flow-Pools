@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
 import { 
   Users, 
   TrendingUp, 
@@ -40,13 +41,37 @@ import {
   Pause,
   Power,
   Lock,
-  Unlock
+  Unlock,
+  Timer,
+  Tool,
+  MessageSquare
 } from 'lucide-react'
+import { io, Socket } from 'socket.io-client'
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [socket, setSocket] = useState<Socket | null>(null)
+  
+  // Timer state
+  const [timerState, setTimerState] = useState({
+    remaining: 300000,
+    duration: 300000,
+    drawNumber: 1,
+    isPaused: false,
+    isMaintenance: false,
+    maintenanceMessage: '',
+    maintenanceStartTime: null as Date | null,
+    pausedBy: '',
+    pausedAt: null as Date | null,
+    nextDrawTime: Date.now() + 300000
+  })
+  
+  // Maintenance form state
+  const [maintenanceMessage, setMaintenanceMessage] = useState('')
+  const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false)
+  
   const [systemStatus, setSystemStatus] = useState({
     bettingOpen: true,
     maintenanceMode: false,
@@ -67,6 +92,76 @@ export default function AdminDashboard() {
     
     // Redirect to admin login
     window.location.href = '/admin-login'
+  }
+
+  // Initialize Socket.IO and timer controls
+  useEffect(() => {
+    const newSocket = io()
+    setSocket(newSocket)
+
+    // Listen for timer updates
+    newSocket.on('timer_update', (data: any) => {
+      setTimerState(data)
+      setSystemStatus(prev => ({
+        ...prev,
+        maintenanceMode: data.isMaintenance,
+        bettingOpen: !data.isPaused && !data.isMaintenance
+      }))
+    })
+
+    // Listen for maintenance events
+    newSocket.on('maintenance_started', (data: any) => {
+      console.log('Maintenance started:', data)
+    })
+
+    newSocket.on('maintenance_ended', (data: any) => {
+      console.log('Maintenance ended:', data)
+    })
+
+    return () => {
+      newSocket.close()
+    }
+  }, [])
+
+  // Timer control functions
+  const handleTimerControl = async (action: string, data?: any) => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/admin/timer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-name': 'Admin'
+        },
+        body: JSON.stringify({
+          action,
+          adminName: 'Admin',
+          ...data
+        })
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Also emit via Socket.IO for real-time updates
+        socket?.emit('timer_control', {
+          action,
+          adminName: 'Admin',
+          ...data
+        })
+      }
+    } catch (error) {
+      console.error('Timer control error:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const formatTime = (milliseconds: number) => {
+    const seconds = Math.floor(milliseconds / 1000)
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
   const [stats, setStats] = useState({
@@ -305,36 +400,138 @@ export default function AdminDashboard() {
                   <span>System Controls</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                  <div className="flex items-center justify-between">
+              <CardContent className="space-y-6">
+                {/* Timer Status */}
+                <div className="bg-black/20 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h4 className="text-white font-semibold">Betting Status</h4>
-                      <p className="text-white/60 text-sm">Allow users to place bets</p>
+                      <h4 className="text-white font-semibold flex items-center space-x-2">
+                        <Timer className="w-4 h-4 text-yellow-400" />
+                        <span>Draw Timer</span>
+                      </h4>
+                      <p className="text-white/60 text-sm">Current Draw: #{timerState.drawNumber}</p>
                     </div>
-                    <Button
-                      onClick={() => handleSystemToggle('betting')}
-                      disabled={isLoading}
-                      className={`${systemStatus.bettingOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
-                    >
-                      {systemStatus.bettingOpen ? <Play className="w-4 h-4 mr-2" /> : <Pause className="w-4 h-4 mr-2" />}
-                      {systemStatus.bettingOpen ? 'Open' : 'Closed'}
-                    </Button>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-yellow-400 font-mono">
+                        {formatTime(timerState.remaining)}
+                      </div>
+                      <div className="text-white/60 text-xs">
+                        {timerState.isPaused ? 'PAUSED' : timerState.isMaintenance ? 'MAINTENANCE' : 'RUNNING'}
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-white font-semibold">Maintenance Mode</h4>
-                      <p className="text-white/60 text-sm">Temporarily disable system</p>
+                  
+                  {timerState.pausedBy && (
+                    <div className="text-white/60 text-sm mb-2">
+                      Paused by: {timerState.pausedBy} at {timerState.pausedAt ? new Date(timerState.pausedAt).toLocaleTimeString() : '--'}
                     </div>
-                    <Button
-                      onClick={() => handleSystemToggle('maintenance')}
-                      disabled={isLoading}
-                      className={`${systemStatus.maintenanceMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-gray-600 hover:bg-gray-700'}`}
-                    >
-                      <Power className="w-4 h-4 mr-2" />
-                      {systemStatus.maintenanceMode ? 'On' : 'Off'}
-                    </Button>
+                  )}
+                </div>
+
+                {/* Timer Controls */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <Button
+                    onClick={() => handleTimerControl('pause')}
+                    disabled={isLoading || timerState.isPaused}
+                    className="bg-orange-600 hover:bg-orange-700"
+                  >
+                    <Pause className="w-4 h-4 mr-2" />
+                    Pause
+                  </Button>
+                  <Button
+                    onClick={() => handleTimerControl('resume')}
+                    disabled={isLoading || !timerState.isPaused}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Resume
+                  </Button>
+                  <Button
+                    onClick={() => handleTimerControl('reset')}
+                    disabled={isLoading}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Reset
+                  </Button>
+                  <Button
+                    onClick={() => setShowMaintenanceDialog(true)}
+                    disabled={isLoading}
+                    className={timerState.isMaintenance ? "bg-red-600 hover:bg-red-700" : "bg-gray-600 hover:bg-gray-700"}
+                  >
+                    <Tool className="w-4 h-4 mr-2" />
+                    {timerState.isMaintenance ? 'End Maint' : 'Start Maint'}
+                  </Button>
+                </div>
+
+                {/* Maintenance Status */}
+                {timerState.isMaintenance && (
+                  <div className="bg-red-500/20 border border-red-500/40 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="text-red-400 font-semibold mb-2">Maintenance Mode Active</h4>
+                        <p className="text-white/80 text-sm mb-2">{timerState.maintenanceMessage}</p>
+                        <div className="flex items-center space-x-4">
+                          <Button
+                            onClick={() => handleTimerControl('endMaintenance')}
+                            disabled={isLoading}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            End Maintenance
+                          </Button>
+                          <Button
+                            onClick={() => setShowMaintenanceDialog(true)}
+                            disabled={isLoading}
+                            variant="outline"
+                            className="border-white/40 text-white hover:bg-white/10"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            Update Message
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick Actions */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg">
+                    <div>
+                      <h4 className="text-white font-semibold text-sm">Quick Duration</h4>
+                      <p className="text-white/60 text-xs">Set timer duration</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        onClick={() => handleTimerControl('setDuration', { duration: 3 * 60 * 1000 })}
+                        disabled={isLoading}
+                        size="sm"
+                        variant="outline"
+                        className="border-white/40 text-white hover:bg-white/10"
+                      >
+                        3m
+                      </Button>
+                      <Button
+                        onClick={() => handleTimerControl('setDuration', { duration: 5 * 60 * 1000 })}
+                        disabled={isLoading}
+                        size="sm"
+                        variant="outline"
+                        className="border-white/40 text-white hover:bg-white/10"
+                      >
+                        5m
+                      </Button>
+                      <Button
+                        onClick={() => handleTimerControl('setDuration', { duration: 10 * 60 * 1000 })}
+                        disabled={isLoading}
+                        size="sm"
+                        variant="outline"
+                        className="border-white/40 text-white hover:bg-white/10"
+                      >
+                        10m
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -738,6 +935,64 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+
+      {/* Maintenance Dialog */}
+      {showMaintenanceDialog && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-slate-800 border border-white/20 rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold text-white mb-4">
+              {timerState.isMaintenance ? 'Update Maintenance Message' : 'Start Maintenance Mode'}
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <Label className="text-white text-sm">Maintenance Message</Label>
+                <Textarea
+                  value={maintenanceMessage}
+                  onChange={(e) => setMaintenanceMessage(e.target.value)}
+                  placeholder="Enter maintenance message for users..."
+                  className="bg-slate-700 border-white/20 text-white placeholder-white/40 mt-1"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="text-white/60 text-sm">
+                {timerState.isMaintenance 
+                  ? 'Update the message that users will see during maintenance.'
+                  : 'Users will see this message while maintenance is active. Betting will be paused.'}
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <Button
+                onClick={() => {
+                  if (timerState.isMaintenance) {
+                    handleTimerControl('updateMaintenanceMessage', { message: maintenanceMessage })
+                  } else {
+                    handleTimerControl('startMaintenance', { message: maintenanceMessage })
+                  }
+                  setShowMaintenanceDialog(false)
+                  setMaintenanceMessage('')
+                }}
+                disabled={isLoading || !maintenanceMessage.trim()}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {timerState.isMaintenance ? 'Update Message' : 'Start Maintenance'}
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowMaintenanceDialog(false)
+                  setMaintenanceMessage('')
+                }}
+                variant="outline"
+                className="border-white/40 text-white hover:bg-white/10"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

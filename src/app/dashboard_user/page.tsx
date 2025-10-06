@@ -21,8 +21,10 @@ import {
   Target,
   Zap,
   Star,
-  Gift
+  Gift,
+  AlertTriangle
 } from 'lucide-react'
+import { io, Socket } from 'socket.io-client'
 
 export default function DashboardUser() {
   const [balance, setBalance] = useState(10000)
@@ -37,6 +39,60 @@ export default function DashboardUser() {
   const [betHistory, setBetHistory] = useState<any[]>([])
   const [recentDraws, setRecentDraws] = useState<any[]>([])
   const [countdown, setCountdown] = useState('02:45:00')
+  const [drawNumber, setDrawNumber] = useState(1)
+  const [socket, setSocket] = useState<Socket | null>(null)
+  
+  // Maintenance state
+  const [isMaintenance, setIsMaintenance] = useState(false)
+  const [maintenanceMessage, setMaintenanceMessage] = useState('')
+  const [isPaused, setIsPaused] = useState(false)
+
+  useEffect(() => {
+    // Initialize Socket.IO connection
+    const newSocket = io()
+    setSocket(newSocket)
+
+    // Listen for timer updates
+    newSocket.on('timer_update', (data: any) => {
+      const seconds = Math.floor(data.remaining / 1000)
+      const hours = Math.floor(seconds / 3600)
+      const minutes = Math.floor((seconds % 3600) / 60)
+      const secs = seconds % 60
+      setCountdown(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`)
+      setDrawNumber(data.drawNumber)
+      setIsMaintenance(data.isMaintenance)
+      setMaintenanceMessage(data.maintenanceMessage)
+      setIsPaused(data.isPaused)
+      setIsBettingOpen(!data.isPaused && !data.isMaintenance)
+    })
+
+    // Listen for maintenance events
+    newSocket.on('maintenance_started', (data: any) => {
+      console.log('Maintenance started:', data)
+      setIsMaintenance(true)
+      setMaintenanceMessage(data.message)
+      setIsBettingOpen(false)
+    })
+
+    newSocket.on('maintenance_ended', (data: any) => {
+      console.log('Maintenance ended:', data)
+      setIsMaintenance(false)
+      setMaintenanceMessage('')
+      setIsBettingOpen(true)
+    })
+
+    // Listen for new round events
+    newSocket.on('new_round', (data: any) => {
+      console.log('New round started:', data.drawNumber)
+      // Refresh data when new round starts
+      fetchRecentDraws()
+    })
+
+    // Cleanup on unmount
+    return () => {
+      newSocket.close()
+    }
+  }, [])
 
   useEffect(() => {
     // Load data
@@ -47,24 +103,6 @@ export default function DashboardUser() {
     }
 
     loadData()
-
-    // Countdown timer
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        const [hours, minutes, seconds] = prev.split(':').map(Number)
-        let totalSeconds = hours * 3600 + minutes * 60 + seconds
-        if (totalSeconds > 0) {
-          totalSeconds--
-          const h = Math.floor(totalSeconds / 3600)
-          const m = Math.floor((totalSeconds % 3600) / 60)
-          const s = totalSeconds % 60
-          return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-        }
-        return '00:00:00'
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
   }, [])
 
   const handleLogout = () => {
@@ -246,6 +284,22 @@ export default function DashboardUser() {
           </div>
         </div>
       </nav>
+
+      {/* Maintenance Banner */}
+      {isMaintenance && (
+        <div className="bg-red-600 border-b border-red-700">
+          <div className="w-full max-w-screen-2xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-center space-x-3">
+              <AlertTriangle className="w-5 h-5 text-white animate-pulse" />
+              <div className="text-center">
+                <h3 className="text-white font-bold">Sedang Dalam Perbaikan</h3>
+                <p className="text-white/90 text-sm">{maintenanceMessage || 'Sistem sedang dalam perbaikan. Mohon tunggu beberapa saat.'}</p>
+              </div>
+              <AlertTriangle className="w-5 h-5 text-white animate-pulse" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer Test</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .timer {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fbbf24;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .info {
+            background: #374151;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .status {
+            background: #065f46;
+            color: #10b981;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .error {
+            background: #7f1d1d;
+            color: #ef4444;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        button {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #b91c1c;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Batik Pools Timer Test</h1>
+    
+    <div class="info">
+        <h3>📝 Test Instructions:</h3>
+        <ol>
+            <li>Buka halaman ini di multiple browser tabs</li>
+            <li>Perhatikan timer di semua tab</li>
+            <li>Refresh salah satu tab</li>
+            <li>Timer harus tetap sinkron di semua tab</li>
+            <li>Test control buttons untuk pause/resume/reset</li>
+        </ol>
+    </div>
+
+    <div class="status" id="status">
+        🔌 Connecting to Socket.IO...
+    </div>
+
+    <div class="timer" id="timer">
+        00:00:00
+    </div>
+
+    <div class="info">
+        <h3>📊 Timer Information:</h3>
+        <p><strong>Draw Number:</strong> <span id="drawNumber">1</span></p>
+        <p><strong>Duration:</strong> <span id="duration">5:00</span></p>
+        <p><strong>Status:</strong> <span id="timerStatus">Running</span></p>
+        <p><strong>Next Draw:</strong> <span id="nextDraw">--:--:--</span></p>
+        <p><strong>Socket ID:</strong> <span id="socketId">--</span></p>
+    </div>
+
+    <div class="info">
+        <h3>🎮 Timer Controls:</h3>
+        <button onclick="pauseTimer()">⏸️ Pause</button>
+        <button onclick="resumeTimer()">▶️ Resume</button>
+        <button onclick="resetTimer()">🔄 Reset</button>
+        <button onclick="setDuration(3)">⏱️ Set 3 Min</button>
+        <button onclick="setDuration(10)">⏱️ Set 10 Min</button>
+    </div>
+
+    <div class="info">
+        <h3>📝 Test Log:</h3>
+        <div id="log" style="max-height: 200px; overflow-y: auto; background: #1f2937; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px;">
+            <div>Waiting for connection...</div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io('http://localhost:3000');
+        let timerData = {};
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML = `<div>[${time}] ${message}</div>` + logDiv.innerHTML;
+            // Keep only last 10 messages
+            const messages = logDiv.children;
+            if (messages.length > 10) {
+                logDiv.removeChild(messages[messages.length - 1]);
+            }
+        }
+
+        function formatTime(milliseconds) {
+            const seconds = Math.floor(milliseconds / 1000);
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateDisplay(data) {
+            timerData = data;
+            document.getElementById('timer').textContent = formatTime(data.remaining);
+            document.getElementById('drawNumber').textContent = data.drawNumber;
+            document.getElementById('duration').textContent = formatTime(data.duration);
+            document.getElementById('timerStatus').textContent = data.isPaused ? 'Paused' : 'Running';
+            document.getElementById('nextDraw').textContent = new Date(data.nextDrawTime).toLocaleTimeString();
+            
+            log(`Timer updated: ${formatTime(data.remaining)} | Draw #${data.drawNumber} | ${data.isPaused ? 'Paused' : 'Running'}`);
+        }
+
+        function pauseTimer() {
+            socket.emit('timer_control', { action: 'pause' });
+            log('⏸️ Pause command sent');
+        }
+
+        function resumeTimer() {
+            socket.emit('timer_control', { action: 'resume' });
+            log('▶️ Resume command sent');
+        }
+
+        function resetTimer() {
+            socket.emit('timer_control', { action: 'reset' });
+            log('🔄 Reset command sent');
+        }
+
+        function setDuration(minutes) {
+            const duration = minutes * 60 * 1000;
+            socket.emit('timer_control', { action: 'setDuration', duration });
+            log(`⏱️ Set duration to ${minutes} minutes`);
+        }
+
+        // Socket event handlers
+        socket.on('connect', () => {
+            document.getElementById('status').innerHTML = '✅ Connected to Socket.IO';
+            document.getElementById('status').className = 'status';
+            document.getElementById('socketId').textContent = socket.id;
+            log(`🔌 Connected with Socket ID: ${socket.id}`);
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('status').innerHTML = '❌ Disconnected from Socket.IO';
+            document.getElementById('status').className = 'error';
+            log('❌ Disconnected from Socket.IO');
+        });
+
+        socket.on('timer_update', (data) => {
+            updateDisplay(data);
+        });
+
+        socket.on('new_round', (data) => {
+            log(`🎉 New round started! Draw #${data.drawNumber}`);
+            alert(`🎉 New Round Started! Draw #${data.drawNumber}`);
+        });
+
+        // Fetch initial timer state
+        fetch('http://localhost:3000/api/timer')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateDisplay(data.timer);
+                    log('📊 Initial timer state loaded');
+                }
+            })
+            .catch(error => {
+                log(`❌ Failed to load timer: ${error.message}`);
+            });
+
+        log('🚀 Timer test page loaded');
+    </script>
+</body>
+</html>
