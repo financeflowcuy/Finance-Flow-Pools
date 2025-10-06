@@ -17,19 +17,26 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
+<<<<<<< HEAD
   phone     String?
   password  String
   balance   Int      @default(1000000)
   isActive  Boolean  @default(true)
   isAdmin   Boolean  @default(false)
+=======
+  balance   Int      @default(1000000)
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
   bets      Bet[]
   winnings  Winning[]
+<<<<<<< HEAD
   auditLogs AuditLog[]
   
   @@map("users")
+=======
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
 }
 
 model LotteryDraw {
@@ -46,9 +53,12 @@ model LotteryDraw {
   
   bets        Bet[]
   winnings    Winning[]
+<<<<<<< HEAD
   auditLogs   AuditLog[]
   
   @@map("lottery_draws")
+=======
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
 }
 
 model Bet {
@@ -58,7 +68,11 @@ model Bet {
   numbers      String   // JSON array of selected numbers
   betType      String   // "2D", "3D", or "4D"
   amount       Int
+<<<<<<< HEAD
   status       String   @default("pending") // "pending", "won", "lost", "refunded"
+=======
+  status       String   @default("pending") // "pending", "won", "lost"
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
   encryptedData String? // JSON string with encrypted data, iv, and tag
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -66,8 +80,11 @@ model Bet {
   user         User     @relation(fields: [userId], references: [id])
   draw         LotteryDraw? @relation(fields: [drawId], references: [id])
   winning      Winning?
+<<<<<<< HEAD
   
   @@map("bets")
+=======
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
 }
 
 model Winning {
@@ -83,19 +100,28 @@ model Winning {
   bet      Bet      @relation(fields: [betId], references: [id])
   user     User     @relation(fields: [userId], references: [id])
   draw     LotteryDraw @relation(fields: [drawId], references: [id])
+<<<<<<< HEAD
   
   @@map("winnings")
+=======
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
+<<<<<<< HEAD
   action    String   // "bet_placed", "draw_completed", "winning_paid", "admin_login", "user_login"
   userId    String?
   drawId    String?
+=======
+  action    String   // "bet_placed", "draw_completed", "winning_paid"
+  userId    String?
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
   data      String   // JSON data
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
+<<<<<<< HEAD
   
   user      User?    @relation(fields: [userId], references: [id])
   draw      LotteryDraw? @relation(fields: [drawId], references: [id])
@@ -124,4 +150,6 @@ model Announcement {
   updatedAt   DateTime @updatedAt
   
   @@map("announcements")
+=======
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
 }

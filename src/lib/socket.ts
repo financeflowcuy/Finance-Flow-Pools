@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 
+<<<<<<< HEAD
 // Global timer state
 let globalTimer = {
   startTime: Date.now(),
@@ -170,6 +171,12 @@ export const setupSocket = (io: Server) => {
       }
     });
     
+=======
+export const setupSocket = (io: Server) => {
+  io.on('connection', (socket) => {
+    console.log('Client connected:', socket.id);
+    
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
     // Handle messages
     socket.on('message', (msg: { text: string; senderId: string }) => {
       // Echo: broadcast message only the client who send the message
@@ -187,7 +194,11 @@ export const setupSocket = (io: Server) => {
 
     // Send welcome message
     socket.emit('message', {
+<<<<<<< HEAD
       text: 'Welcome to Batik Pools Live Draw!',
+=======
+      text: 'Welcome to WebSocket Echo Server!',
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
       senderId: 'system',
       timestamp: new Date().toISOString(),
     });

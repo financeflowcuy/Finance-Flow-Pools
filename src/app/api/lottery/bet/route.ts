@@ -68,7 +68,10 @@ export async function POST(request: NextRequest) {
         data: {
           email: userId,
           name: 'Demo User',
+<<<<<<< HEAD
           password: 'demo_password_hash', // In production, this should be properly hashed
+=======
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
           balance: 1000000
         }
       })

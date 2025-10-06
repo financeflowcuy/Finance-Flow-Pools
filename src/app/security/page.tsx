@@ -72,8 +72,13 @@ export default function SecurityPage() {
   }
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-yellow-50 to-orange-50 overflow-x-hidden">
       <div className="w-full max-w-screen-2xl mx-auto px-4 py-8">
+=======
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-yellow-50 to-orange-50">
+      <div className="container mx-auto px-4 py-8">
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
@@ -94,7 +99,11 @@ export default function SecurityPage() {
           <CardContent>
             {securityInfo && (
               <div className="space-y-4">
+<<<<<<< HEAD
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+=======
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
                   {securityInfo.features.map((feature: string, idx: number) => (
                     <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
                       <CheckCircle className="w-5 h-5 text-green-600" />
@@ -105,13 +114,22 @@ export default function SecurityPage() {
 
                 <div className="mt-6">
                   <h3 className="font-semibold mb-3 text-red-800">Algoritma Keamanan</h3>
+<<<<<<< HEAD
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
                     {Object.entries(securityInfo.algorithms).map(([key, value]) => (
+=======
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {Object.entries(securityInfo.algorithms).map(([key, value]: [string, string]) => (
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
                       <div key={key} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                         <span className="text-sm font-medium capitalize">
                           {key.replace(/([A-Z])/g, ' $1').trim()}:
                         </span>
+<<<<<<< HEAD
                         <Badge variant="secondary">{String(value)}</Badge>
+=======
+                        <Badge variant="secondary">{value}</Badge>
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
                       </div>
                     ))}
                   </div>
@@ -152,7 +170,11 @@ export default function SecurityPage() {
                 </AlertDescription>
               </Alert>
 
+<<<<<<< HEAD
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+=======
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
                 <div>
                   <label className="block text-sm font-medium mb-2">Seed (Rahasia)</label>
                   <div className="relative">

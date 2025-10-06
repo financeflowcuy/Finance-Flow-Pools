@@ -1,7 +1,11 @@
 import crypto from 'crypto'
 
 export class SecureLottoSystem {
+<<<<<<< HEAD
   private static readonly ALGORITHM = 'aes-256-cbc'
+=======
+  private static readonly ALGORITHM = 'aes-256-gcm'
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
   private static readonly KEY_LENGTH = 32
   private static readonly IV_LENGTH = 16
   private static readonly TAG_LENGTH = 16
@@ -93,6 +97,7 @@ export class SecureLottoSystem {
     iv: string
     tag: string
   } {
+<<<<<<< HEAD
     try {
       const iv = crypto.randomBytes(this.IV_LENGTH)
       const cipher = crypto.createCipheriv(this.ALGORITHM, Buffer.from(key, 'hex'), iv)
@@ -113,6 +118,21 @@ export class SecureLottoSystem {
         iv: '',
         tag: ''
       }
+=======
+    const iv = crypto.randomBytes(this.IV_LENGTH)
+    const cipher = crypto.createCipherGCM(this.ALGORITHM, Buffer.from(key, 'hex'), iv)
+    cipher.setAAD(Buffer.from('batik-pools'))
+    
+    let encrypted = cipher.update(data, 'utf8', 'hex')
+    encrypted += cipher.final('hex')
+    
+    const tag = cipher.getAuthTag()
+    
+    return {
+      encrypted,
+      iv: iv.toString('hex'),
+      tag: tag.toString('hex')
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
     }
   }
 
@@ -125,6 +145,7 @@ export class SecureLottoSystem {
     iv: string, 
     tag: string
   ): string {
+<<<<<<< HEAD
     try {
       if (!iv) {
         // Fallback for simple encoding
@@ -142,6 +163,16 @@ export class SecureLottoSystem {
       // Fallback for simple encoding
       return Buffer.from(encryptedData, 'hex').toString('utf8')
     }
+=======
+    const decipher = crypto.createDecipherGCM(this.ALGORITHM, Buffer.from(key, 'hex'), Buffer.from(iv, 'hex'))
+    decipher.setAAD(Buffer.from('batik-pools'))
+    decipher.setAuthTag(Buffer.from(tag, 'hex'))
+    
+    let decrypted = decipher.update(encryptedData, 'hex', 'utf8')
+    decrypted += decipher.final('utf8')
+    
+    return decrypted
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
   }
 
   /**

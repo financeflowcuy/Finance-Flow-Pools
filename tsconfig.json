@@ -6,7 +6,11 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+<<<<<<< HEAD
     "noImplicitAny": true,
+=======
+    "noImplicitAny": false,
+>>>>>>> b54ed963e42b18f24b0debb1a41952154db626e5
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
