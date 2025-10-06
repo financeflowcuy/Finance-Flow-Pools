@@ -43,7 +43,6 @@ import {
   Lock,
   Unlock,
   Timer,
-  Tool,
   MessageSquare
 } from 'lucide-react'
 import { io, Socket } from 'socket.io-client'
@@ -72,16 +71,27 @@ export default function AdminDashboard() {
   const [maintenanceMessage, setMaintenanceMessage] = useState('')
   const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false)
   
+  // State for real data
   const [systemStatus, setSystemStatus] = useState({
     bettingOpen: true,
     maintenanceMode: false,
-    totalUsers: 1250,
-    activeUsers: 342,
-    totalBets: 15680,
-    totalRevenue: 245000000,
-    pendingWithdrawals: 12,
-    systemHealth: 'good'
+    totalUsers: 0,
+    activeUsers: 0,
+    totalBets: 0,
+    totalRevenue: 0,
+    pendingWithdrawals: 0,
+    systemHealth: 'good',
+    todayRevenue: 0,
+    todayBets: 0,
+    todayUsers: 0,
+    todayDraws: 0
   })
+
+  const [users, setUsers] = useState([])
+  const [bets, setBets] = useState([])
+  const [withdrawals, setWithdrawals] = useState([])
+  const [auditLogs, setAuditLogs] = useState([])
+  const [reports, setReports] = useState({ revenue: [], users: [] })
 
   const handleLogout = () => {
     // Clear cookie
@@ -156,6 +166,100 @@ export default function AdminDashboard() {
     }
   }
 
+  // Fetch data from APIs
+  const fetchSystemData = async () => {
+    try {
+      const response = await fetch('/api/admin/system')
+      const data = await response.json()
+      if (data.success) {
+        setSystemStatus(prev => ({
+          ...prev,
+          ...data.system.stats,
+          bettingOpen: data.system.bettingOpen,
+          maintenanceMode: data.system.maintenanceMode,
+          systemHealth: data.system.systemHealth
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to fetch system data:', error)
+    }
+  }
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/users')
+      const data = await response.json()
+      if (data.success) {
+        setUsers(data.users)
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
+    }
+  }
+
+  const fetchBets = async () => {
+    try {
+      const response = await fetch('/api/admin/bets')
+      const data = await response.json()
+      if (data.success) {
+        setBets(data.bets)
+      }
+    } catch (error) {
+      console.error('Failed to fetch bets:', error)
+    }
+  }
+
+  const fetchAuditLogs = async () => {
+    try {
+      const response = await fetch('/api/admin/audit')
+      const data = await response.json()
+      if (data.success) {
+        setAuditLogs(data.logs)
+      }
+    } catch (error) {
+      console.error('Failed to fetch audit logs:', error)
+    }
+  }
+
+  const fetchReports = async () => {
+    try {
+      const [revenueResponse, usersResponse] = await Promise.all([
+        fetch('/api/admin/reports?type=revenue'),
+        fetch('/api/admin/reports?type=users')
+      ])
+      
+      const revenueData = await revenueResponse.json()
+      const usersData = await usersResponse.json()
+      
+      setReports({
+        revenue: revenueData.success ? revenueData.data : [],
+        users: usersData.success ? usersData.data : []
+      })
+    } catch (error) {
+      console.error('Failed to fetch reports:', error)
+    }
+  }
+
+  // Load initial data
+  useEffect(() => {
+    fetchSystemData()
+    fetchUsers()
+    fetchBets()
+    fetchAuditLogs()
+    fetchReports()
+  }, [])
+
+  // Refresh data periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchSystemData()
+      fetchUsers()
+      fetchBets()
+    }, 30000) // Refresh every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
   const formatTime = (milliseconds: number) => {
     const seconds = Math.floor(milliseconds / 1000)
     const hours = Math.floor(seconds / 3600)
@@ -163,47 +267,6 @@ export default function AdminDashboard() {
     const secs = seconds % 60
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
-
-  const [stats, setStats] = useState({
-    todayRevenue: 12500000,
-    todayBets: 234,
-    todayUsers: 18,
-    todayDraws: 8,
-    weeklyRevenue: 87500000,
-    weeklyBets: 1638,
-    weeklyUsers: 126,
-    monthlyRevenue: 350000000,
-    monthlyBets: 6552,
-    monthlyUsers: 504
-  })
-
-  const [recentActivities, setRecentActivities] = useState([
-    { id: 1, type: 'user_register', user: 'john_doe', time: '2 menit yang lalu', status: 'success' },
-    { id: 2, type: 'bet_placed', user: 'player123', amount: 50000, time: '5 menit yang lalu', status: 'success' },
-    { id: 3, type: 'withdrawal', user: 'winner456', amount: 2500000, time: '12 menit yang lalu', status: 'pending' },
-    { id: 4, type: 'system_alert', message: 'High traffic detected', time: '15 menit yang lalu', status: 'warning' },
-    { id: 5, type: 'draw_completed', draw: '#1245', time: '30 menit yang lalu', status: 'success' }
-  ])
-
-  const [users, setUsers] = useState([
-    { id: 1, username: 'john_doe', email: 'john@example.com', balance: 1500000, status: 'active', joinDate: '2025-09-15', totalBets: 156, totalWinnings: 890000 },
-    { id: 2, username: 'player123', email: 'player@example.com', balance: 500000, status: 'active', joinDate: '2025-09-20', totalBets: 89, totalWinnings: 1200000 },
-    { id: 3, username: 'winner456', email: 'winner@example.com', balance: 5000000, status: 'active', joinDate: '2025-10-01', totalBets: 234, totalWinnings: 8500000 },
-    { id: 4, username: 'blocked_user', email: 'blocked@example.com', balance: 100000, status: 'blocked', joinDate: '2025-09-10', totalBets: 45, totalWinnings: 0 }
-  ])
-
-  const [bets, setBets] = useState([
-    { id: 1, user: 'john_doe', type: '4D', numbers: '8249', amount: 50000, status: 'pending', time: '14:32:15' },
-    { id: 2, user: 'player123', type: '2D', numbers: '82', amount: 25000, status: 'won', time: '14:28:30', winning: 1750000 },
-    { id: 3, user: 'winner456', type: '3D', numbers: '249', amount: 100000, status: 'lost', time: '14:25:45' },
-    { id: 4, user: 'new_user', type: '4D', numbers: '1234', amount: 75000, status: 'pending', time: '14:22:10' }
-  ])
-
-  const [withdrawals, setWithdrawals] = useState([
-    { id: 1, user: 'winner456', amount: 2500000, bank: 'BCA', account: '1234567890', status: 'pending', time: '13:45:20' },
-    { id: 2, user: 'player123', amount: 1500000, bank: 'Mandiri', account: '0987654321', status: 'approved', time: '12:30:15' },
-    { id: 3, user: 'john_doe', amount: 500000, bank: 'BNI', account: '1122334455', status: 'rejected', time: '11:20:30', reason: 'Invalid account' }
-  ])
 
   const formatCurrency = (amount: number) => {
     return `Rp ${amount.toLocaleString('id-ID')}`
@@ -316,7 +379,7 @@ export default function AdminDashboard() {
             ].map((item) => (
               <Button
                 key={item.id}
-                variant={activeTab === item.id ? 'default' : 'ghost'}
+                variant="ghost"
                 className={`flex items-center space-x-2 px-4 py-3 rounded-none border-b-2 whitespace-nowrap ${
                   activeTab === item.id 
                     ? 'bg-white/10 text-white border-white' 
@@ -345,7 +408,7 @@ export default function AdminDashboard() {
                     <div>
                       <p className="text-white/60 text-sm">Total Users</p>
                       <p className="text-2xl font-bold text-white mt-1">{systemStatus.totalUsers.toLocaleString()}</p>
-                      <p className="text-green-400 text-sm mt-1">+{stats.todayUsers} today</p>
+                      <p className="text-green-400 text-sm mt-1">+{systemStatus.todayUsers} today</p>
                     </div>
                     <Users className="w-8 h-8 text-blue-400" />
                   </div>
@@ -370,7 +433,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-white/60 text-sm">Today Revenue</p>
-                      <p className="text-2xl font-bold text-white mt-1">{formatCurrency(stats.todayRevenue)}</p>
+                      <p className="text-2xl font-bold text-white mt-1">{formatCurrency(systemStatus.todayRevenue)}</p>
                       <p className="text-green-400 text-sm mt-1">+12.5%</p>
                     </div>
                     <DollarSign className="w-8 h-8 text-yellow-400" />
@@ -459,7 +522,7 @@ export default function AdminDashboard() {
                     disabled={isLoading}
                     className={timerState.isMaintenance ? "bg-red-600 hover:bg-red-700" : "bg-gray-600 hover:bg-gray-700"}
                   >
-                    <Tool className="w-4 h-4 mr-2" />
+                    <Settings className="w-4 h-4 mr-2" />
                     {timerState.isMaintenance ? 'End Maint' : 'Start Maint'}
                   </Button>
                 </div>
@@ -547,19 +610,19 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentActivities.map((activity) => (
+                  {auditLogs.slice(0, 5).map((activity: any) => (
                     <div key={activity.id} className="flex items-center justify-between p-3 bg-black/20 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        {getActivityIcon(activity.type)}
+                        {getActivityIcon(activity.action)}
                         <div>
                           <p className="text-white text-sm">
-                            {activity.type === 'user_register' && `User ${activity.user} registered`}
-                            {activity.type === 'bet_placed' && `${activity.user} placed bet ${formatCurrency(activity.amount || 0)}`}
-                            {activity.type === 'withdrawal' && `${activity.user} requested withdrawal ${formatCurrency(activity.amount || 0)}`}
-                            {activity.type === 'system_alert' && `System: ${activity.message}`}
-                            {activity.type === 'draw_completed' && `Draw ${activity.draw} completed`}
+                            {activity.action === 'user_register' && `User ${activity.username} registered`}
+                            {activity.action === 'bet_placed' && `${activity.username} placed bet ${formatCurrency(activity.data?.amount || 0)}`}
+                            {activity.action === 'withdrawal' && `${activity.username} requested withdrawal ${formatCurrency(activity.data?.amount || 0)}`}
+                            {activity.action === 'system_alert' && `System: ${activity.data?.message || 'Alert'}`}
+                            {activity.action === 'draw_completed' && `Draw ${activity.data?.draw || 'N/A'} completed`}
                           </p>
-                          <p className="text-white/60 text-xs">{activity.time}</p>
+                          <p className="text-white/60 text-xs">{new Date(activity.timestamp).toLocaleString()}</p>
                         </div>
                       </div>
                       <div className={`w-2 h-2 rounded-full ${
@@ -705,7 +768,7 @@ export default function AdminDashboard() {
                       {bets.map((bet) => (
                         <tr key={bet.id} className="border-b border-white/10">
                           <td className="py-3 px-4">
-                            <span className="text-white">{bet.user}</span>
+                            <span className="text-white">{bet.username}</span>
                           </td>
                           <td className="py-3 px-4">
                             <Badge variant="outline" className="bg-white/10 text-white border-white/20">
@@ -713,7 +776,7 @@ export default function AdminDashboard() {
                             </Badge>
                           </td>
                           <td className="py-3 px-4">
-                            <span className="text-white font-mono">{bet.numbers}</span>
+                            <span className="text-white font-mono">{Array.isArray(bet.numbers) ? bet.numbers.join(', ') : bet.numbers}</span>
                           </td>
                           <td className="py-3 px-4">
                             <span className="text-white">{formatCurrency(bet.amount)}</span>
@@ -727,7 +790,7 @@ export default function AdminDashboard() {
                             {getStatusBadge(bet.status)}
                           </td>
                           <td className="py-3 px-4">
-                            <span className="text-white/80">{bet.time}</span>
+                            <span className="text-white/80">{new Date(bet.createdAt).toLocaleString()}</span>
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">

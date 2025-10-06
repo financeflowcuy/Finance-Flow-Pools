@@ -32,6 +32,37 @@ export default function DashboardUser() {
   const [betType, setBetType] = useState('2D')
   const [betNumber, setBetNumber] = useState('')
   const [betAmount, setBetAmount] = useState('')
+  const [betCategory, setBetCategory] = useState('basic') // basic, colok, kombinasi, spesial
+
+  // Betting types configuration
+  const bettingTypes = {
+    basic: [
+      { type: '2D', label: '2D', prize: 'x70', description: '2 digit angka', maxLength: 2 },
+      { type: '3D', label: '3D', prize: 'x400', description: '3 digit angka', maxLength: 3 },
+      { type: '4D', label: '4D', prize: 'x3000', description: '4 digit angka', maxLength: 4 }
+    ],
+    colok: [
+      { type: 'Colok Bebas', label: 'CB', prize: 'x1.5', description: '1 digit bebas', maxLength: 1 },
+      { type: 'Colok Bebas 2D', label: 'CB2D', prize: 'x6', description: '2 digit bebas', maxLength: 2 },
+      { type: 'Colok Naga', label: 'CN', prize: 'x20', description: '3 digit bebas', maxLength: 3 },
+      { type: 'Colok Jitu', label: 'CJ', prize: 'x8', description: '1 digit posisi', maxLength: 1 }
+    ],
+    kombinasi: [
+      { type: '50:50', label: '50:50', prize: 'x1.9', description: 'Ganjil/Genap, Besar/Kecil', maxLength: 1 },
+      { type: 'Shio', label: 'Shio', prize: 'x9', description: '12 shio', maxLength: 2 },
+      { type: 'Tengah Tepi', label: 'TT', prize: 'x1.8', description: 'Tengah/Tepi', maxLength: 2 },
+      { type: 'Dasar', label: 'Dasar', prize: 'x1.5', description: 'Ganjil/Genap + Besar/Kecil', maxLength: 1 }
+    ],
+    spesial: [
+      { type: '2D Depan', label: '2D Dpn', prize: 'x70', description: '2 digit depan', maxLength: 2 },
+      { type: '2D Tengah', label: '2D Tg', prize: 'x70', description: '2 digit tengah', maxLength: 2 },
+      { type: '2D Belakang', label: '2D Blk', prize: 'x70', description: '2 digit belakang', maxLength: 2 },
+      { type: 'Macau', label: 'Macau', prize: 'x6', description: '2 digit bebas', maxLength: 2 },
+      { type: 'BBFS 2D', label: 'BBFS 2D', prize: 'x35', description: '2 digit bolak-balik', maxLength: 2 },
+      { type: 'BBFS 3D', label: 'BBFS 3D', prize: 'x200', description: '3 digit bolak-balik', maxLength: 3 },
+      { type: 'BBFS 4D', label: 'BBFS 4D', prize: 'x1500', description: '4 digit bolak-balik', maxLength: 4 }
+    ]
+  }
   const [activeTab, setActiveTab] = useState('betting')
   const [isBettingOpen, setIsBettingOpen] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -179,14 +210,15 @@ export default function DashboardUser() {
           betType,
           betNumber,
           betAmount: amount,
-          userId: userData?.id || 'USER123456'
+          userId: userData?.id || 'USER123456',
+          betCategory
         })
       })
 
       const data = await response.json()
       if (data.success) {
         setBalance(prev => prev - amount)
-        alert(`Taruhan ${betType} - ${betNumber} sebesar Rp ${amount.toLocaleString()} berhasil ditempatkan!`)
+        alert(`Taruhan ${betType} - ${betNumber} sebesar Rp ${amount.toLocaleString()} berhasil ditempatkan!\nPotensi kemenangan: Rp ${data.potentialWinning.toLocaleString()}`)
         setBetNumber('')
         setBetAmount('')
         fetchBetHistory()
@@ -203,6 +235,60 @@ export default function DashboardUser() {
 
   const formatCurrency = (amount: number) => {
     return `Rp ${amount.toLocaleString('id-ID')}`
+  }
+
+  // Helper functions for betting types
+  const getPlaceholderForBetType = (type: string) => {
+    const placeholders: Record<string, string> = {
+      '2D': 'Masukkan 2 digit angka',
+      '3D': 'Masukkan 3 digit angka', 
+      '4D': 'Masukkan 4 digit angka',
+      'Colok Bebas': 'Masukkan 1 digit',
+      'Colok Bebas 2D': 'Masukkan 2 digit',
+      'Colok Naga': 'Masukkan 3 digit',
+      'Colok Jitu': 'Masukkan 1 digit',
+      '50:50': 'Pilih: G/Genap, B/Kecil',
+      'Shio': 'Masukkan 1-12',
+      'Tengah Tepi': 'Pilih: Tengah/Tepi',
+      'Dasar': 'Pilih: G/Genap, B/Kecil',
+      '2D Depan': 'Masukkan 2 digit depan',
+      '2D Tengah': 'Masukkan 2 digit tengah',
+      '2D Belakang': 'Masukkan 2 digit belakang',
+      'Macau': 'Masukkan 2 digit',
+      'BBFS 2D': 'Masukkan 2 digit (bolak-balik)',
+      'BBFS 3D': 'Masukkan 3 digit (bolak-balik)',
+      'BBFS 4D': 'Masukkan 4 digit (bolak-balik)'
+    }
+    return placeholders[type] || 'Masukkan nomor'
+  }
+
+  const getMaxLengthForBetType = (type: string) => {
+    const betTypeConfig = Object.values(bettingTypes).flat().find(b => b.type === type)
+    return betTypeConfig?.maxLength || 4
+  }
+
+  const getExampleForBetType = (type: string) => {
+    const examples: Record<string, string> = {
+      '2D': 'Contoh: 82',
+      '3D': 'Contoh: 824',
+      '4D': 'Contoh: 8249',
+      'Colok Bebas': 'Contoh: 8 (jika 8 ada di 4D)',
+      'Colok Bebas 2D': 'Contoh: 82 (jika 8 dan 2 ada di 4D)',
+      'Colok Naga': 'Contoh: 824 (jika 8, 2, 4 ada di 4D)',
+      'Colok Jitu': 'Contoh: 8-As (posisi As)',
+      '50:50': 'Contoh: G (Ganjil) atau B (Besar)',
+      'Shio': 'Contoh: 1 (Ayam) - 12 (Naga)',
+      'Tengah Tepi': 'Contoh: Tengah (25-74) atau Tepi (00-24, 75-99)',
+      'Dasar': 'Contoh: GB (Ganjil Besar) atau GK (Ganjil Kecil)',
+      '2D Depan': 'Contoh: 82 (dari 8249)',
+      '2D Tengah': 'Contoh: 24 (dari 8249)',
+      '2D Belakang': 'Contoh: 49 (dari 8249)',
+      'Macau': 'Contoh: 82 (bebas posisi)',
+      'BBFS 2D': 'Contoh: 82 (menang 82 atau 28)',
+      'BBFS 3D': 'Contoh: 824 (menang 824, 842, 284, 248, 428, 482)',
+      'BBFS 4D': 'Contoh: 8249 (menang semua 24 permutasi)'
+    }
+    return examples[type] || 'Masukkan nomor sesuai jenis taruhan'
   }
 
   return (
@@ -349,22 +435,67 @@ export default function DashboardUser() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 space-y-6 sm:space-y-8">
+                  {/* Bet Category Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-yellow-400 font-semibold text-base sm:text-lg">Kategori Taruhan</Label>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
+                      {[
+                        { id: 'basic', label: 'Dasar', icon: '🎯' },
+                        { id: 'colok', label: 'Colok', icon: '🎲' },
+                        { id: 'kombinasi', label: 'Kombinasi', icon: '🔀' },
+                        { id: 'spesial', label: 'Spesial', icon: '⭐' }
+                      ].map((category) => (
+                        <Button
+                          key={category.id}
+                          variant={betCategory === category.id ? 'default' : 'outline'}
+                          onClick={() => {
+                            setBetCategory(category.id)
+                            setBetType(bettingTypes[category.id as keyof typeof bettingTypes][0].type)
+                            setBetNumber('')
+                          }}
+                          className={`py-2 sm:py-3 font-bold text-xs sm:text-sm transition-all w-full min-w-0 ${
+                            betCategory === category.id 
+                              ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-black hover:from-yellow-400 hover:to-orange-400 shadow-lg shadow-yellow-500/30' 
+                              : 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-center space-x-1">
+                            <span>{category.icon}</span>
+                            <span>{category.label}</span>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Bet Type Selection */}
-                  <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full">
-                    {['2D', '3D', '4D'].map((type) => (
-                      <Button
-                        key={type}
-                        variant={betType === type ? 'default' : 'outline'}
-                        onClick={() => setBetType(type)}
-                        className={`py-3 sm:py-4 font-bold text-sm sm:text-lg transition-all w-full min-w-0 ${
-                          betType === type 
-                            ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-black hover:from-yellow-400 hover:to-orange-400 shadow-lg shadow-yellow-500/30' 
-                            : 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10'
-                        }`}
-                      >
-                        {type}
-                      </Button>
-                    ))}
+                  <div className="space-y-3">
+                    <Label className="text-yellow-400 font-semibold text-base sm:text-lg">Jenis Taruhan</Label>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
+                      {bettingTypes[betCategory as keyof typeof bettingTypes].map((bet) => (
+                        <Button
+                          key={bet.type}
+                          variant={betType === bet.type ? 'default' : 'outline'}
+                          onClick={() => {
+                            setBetType(bet.type)
+                            setBetNumber('')
+                          }}
+                          className={`py-2 sm:py-3 font-bold text-xs sm:text-sm transition-all w-full min-w-0 ${
+                            betType === bet.type 
+                              ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-black hover:from-yellow-400 hover:to-orange-400 shadow-lg shadow-yellow-500/30' 
+                              : 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className="font-bold">{bet.label}</div>
+                            <div className="text-xs opacity-80">{bet.prize}</div>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-yellow-400/60 text-xs sm:text-sm text-center">
+                      {bettingTypes[betCategory as keyof typeof bettingTypes].find(b => b.type === betType)?.description}
+                    </p>
                   </div>
 
                   {/* Number Input */}
@@ -372,15 +503,15 @@ export default function DashboardUser() {
                     <Label className="text-yellow-400 font-semibold text-base sm:text-lg">Nomor {betType}</Label>
                     <Input
                       type="text"
-                      placeholder={`Masukkan ${betType.length} digit angka`}
+                      placeholder={getPlaceholderForBetType(betType)}
                       value={betNumber}
                       onChange={(e) => setBetNumber(e.target.value)}
-                      maxLength={parseInt(betType)}
+                      maxLength={getMaxLengthForBetType(betType)}
                       className="bg-black/40 border-yellow-500/30 text-white placeholder-yellow-400/30 text-base sm:text-lg py-3 text-center font-mono"
                       disabled={!isBettingOpen}
                     />
                     <p className="text-yellow-400/60 text-xs sm:text-sm text-center">
-                      Contoh: {betType === '2D' ? '82' : betType === '3D' ? '824' : '8249'}
+                      {getExampleForBetType(betType)}
                     </p>
                   </div>
 
@@ -415,20 +546,24 @@ export default function DashboardUser() {
                   <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-xl p-4 sm:p-6 border border-yellow-500/20">
                     <h4 className="text-yellow-400 font-bold text-base sm:text-lg mb-3 sm:mb-4 flex items-center space-x-2">
                       <Gift className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span>Hadiah</span>
+                      <span>Informasi Hadiah</span>
                     </h4>
-                    <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full">
-                      <div className="text-center">
-                        <div className="text-lg sm:text-2xl font-bold text-yellow-400">x70</div>
-                        <div className="text-yellow-400/60 text-xs sm:text-sm">2D</div>
+                    <div className="space-y-3">
+                      <div className="bg-black/40 rounded-lg p-3 text-center">
+                        <div className="text-2xl sm:text-3xl font-bold text-yellow-400">
+                          {bettingTypes[betCategory as keyof typeof bettingTypes].find(b => b.type === betType)?.prize}
+                        </div>
+                        <div className="text-yellow-400/80 text-sm sm:text-base">
+                          {betType}
+                        </div>
+                        <div className="text-yellow-400/60 text-xs sm:text-sm mt-1">
+                          {bettingTypes[betCategory as keyof typeof bettingTypes].find(b => b.type === betType)?.description}
+                        </div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg sm:text-2xl font-bold text-yellow-400">x400</div>
-                        <div className="text-yellow-400/60 text-xs sm:text-sm">3D</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg sm:text-2xl font-bold text-yellow-400">x3000</div>
-                        <div className="text-yellow-400/60 text-xs sm:text-sm">4D</div>
+                        <p className="text-yellow-400/60 text-xs sm:text-sm">
+                          Contoh kemenangan: {formatCurrency(10000)} → {formatCurrency(10000 * parseFloat((bettingTypes[betCategory as keyof typeof bettingTypes].find(b => b.type === betType)?.prize || '1').replace('x', '')))}
+                        </p>
                       </div>
                     </div>
                   </div>

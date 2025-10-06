@@ -1,9 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Betting types configuration
+const bettingTypes = {
+  basic: [
+    { type: '2D', prize: 70, maxLength: 2 },
+    { type: '3D', prize: 400, maxLength: 3 },
+    { type: '4D', prize: 3000, maxLength: 4 }
+  ],
+  colok: [
+    { type: 'Colok Bebas', prize: 1.5, maxLength: 1 },
+    { type: 'Colok Bebas 2D', prize: 6, maxLength: 2 },
+    { type: 'Colok Naga', prize: 20, maxLength: 3 },
+    { type: 'Colok Jitu', prize: 8, maxLength: 1 }
+  ],
+  kombinasi: [
+    { type: '50:50', prize: 1.9, maxLength: 1 },
+    { type: 'Shio', prize: 9, maxLength: 2 },
+    { type: 'Tengah Tepi', prize: 1.8, maxLength: 2 },
+    { type: 'Dasar', prize: 1.5, maxLength: 1 }
+  ],
+  spesial: [
+    { type: '2D Depan', prize: 70, maxLength: 2 },
+    { type: '2D Tengah', prize: 70, maxLength: 2 },
+    { type: '2D Belakang', prize: 70, maxLength: 2 },
+    { type: 'Macau', prize: 6, maxLength: 2 },
+    { type: 'BBFS 2D', prize: 35, maxLength: 2 },
+    { type: 'BBFS 3D', prize: 200, maxLength: 3 },
+    { type: 'BBFS 4D', prize: 1500, maxLength: 4 }
+  ]
+}
+
+// Get all betting types
+const allBettingTypes = Object.values(bettingTypes).flat()
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { betType, betNumber, betAmount, userId } = body
+    const { betType, betNumber, betAmount, userId, betCategory } = body
 
     // Validation
     if (!betType || !betNumber || !betAmount || !userId) {
@@ -14,18 +47,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate bet type
-    if (!['2D', '3D', '4D'].includes(betType)) {
+    const betTypeConfig = allBettingTypes.find(bt => bt.type === betType)
+    if (!betTypeConfig) {
       return NextResponse.json(
         { error: 'Invalid bet type' },
         { status: 400 }
       )
     }
 
-    // Validate number length
-    const expectedLength = parseInt(betType)
-    if (betNumber.length !== expectedLength || !/^\d+$/.test(betNumber)) {
+    // Validate number format based on bet type
+    let validationResult = validateBetNumber(betType, betNumber)
+    if (!validationResult.isValid) {
       return NextResponse.json(
-        { error: `Invalid ${betType} number format` },
+        { error: validationResult.error },
         { status: 400 }
       )
     }
@@ -50,8 +84,7 @@ export async function POST(request: NextRequest) {
     const drawNumber = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
     
     // Calculate potential winnings
-    const multipliers = { '2D': 70, '3D': 400, '4D': 3000 }
-    const potentialWinning = amount * multipliers[betType as keyof typeof multipliers]
+    const potentialWinning = Math.floor(amount * betTypeConfig.prize)
 
     return NextResponse.json({
       success: true,
@@ -62,7 +95,8 @@ export async function POST(request: NextRequest) {
       potentialWinning,
       drawNumber,
       timestamp: new Date().toISOString(),
-      status: 'PENDING'
+      status: 'PENDING',
+      betCategory
     })
 
   } catch (error) {
@@ -72,6 +106,84 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// Validation function for different bet types
+function validateBetNumber(betType: string, betNumber: string): { isValid: boolean; error?: string } {
+  const betTypeConfig = allBettingTypes.find(bt => bt.type === betType)
+  
+  switch (betType) {
+    case '2D':
+    case '3D':
+    case '4D':
+    case '2D Depan':
+    case '2D Tengah':
+    case '2D Belakang':
+    case 'Colok Bebas 2D':
+    case 'Colok Naga':
+    case 'Macau':
+    case 'BBFS 2D':
+    case 'BBFS 3D':
+    case 'BBFS 4D':
+      if (!/^\d+$/.test(betNumber)) {
+        return { isValid: false, error: 'Number must contain only digits' }
+      }
+      if (betNumber.length !== betTypeConfig?.maxLength) {
+        return { isValid: false, error: `Invalid number length. Expected ${betTypeConfig?.maxLength} digits` }
+      }
+      
+      // Additional validation for BBFS - check for unique digits
+      if (betType.startsWith('BBFS')) {
+        const uniqueDigits = new Set(betNumber.split(''))
+        if (uniqueDigits.size !== betNumber.length) {
+          return { isValid: false, error: 'BBFS numbers must contain unique digits' }
+        }
+      }
+      break
+      
+    case 'Colok Bebas':
+    case 'Colok Jitu':
+      if (!/^\d+$/.test(betNumber)) {
+        return { isValid: false, error: 'Number must contain only digits' }
+      }
+      if (betNumber.length !== 1) {
+        return { isValid: false, error: 'Please enter 1 digit' }
+      }
+      break
+      
+    case '50:50':
+      const valid5050 = ['G', 'Genap', 'B', 'Besar', 'K', 'Kecil', 'GB', 'GK', 'BB', 'BK']
+      if (!valid5050.includes(betNumber.toUpperCase())) {
+        return { isValid: false, error: 'Invalid choice. Use: G/Genap, B/Besar, K/Kecil, or combinations like GB, GK' }
+      }
+      break
+      
+    case 'Shio':
+      const shioNum = parseInt(betNumber)
+      if (isNaN(shioNum) || shioNum < 1 || shioNum > 12) {
+        return { isValid: false, error: 'Shio must be between 1 and 12' }
+      }
+      break
+      
+    case 'Tengah Tepi':
+      const validTT = ['Tengah', 'Tepi', 'T', 'TP']
+      if (!validTT.includes(betNumber)) {
+        return { isValid: false, error: 'Invalid choice. Use: Tengah or Tepi' }
+      }
+      break
+      
+    case 'Dasar':
+      const validDasar = ['GB', 'GK', 'BB', 'BK']
+      if (!validDasar.includes(betNumber.toUpperCase())) {
+        return { isValid: false, error: 'Invalid choice. Use: GB (Ganjil Besar), GK (Ganjil Kecil), BB (Genap Besar), BK (Genap Kecil)' }
+      }
+      break
+      
+    default:
+      return { isValid: false, error: 'Invalid bet type' }
+  }
+  
+  return { isValid: true }
 }
 
 export async function GET(request: NextRequest) {
