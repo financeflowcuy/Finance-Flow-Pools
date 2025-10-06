@@ -117,7 +117,7 @@ export default function BatikPoolsLanding() {
             <div className="flex items-center space-x-3">
               <Dialog open={showLogin} onOpenChange={setShowLogin}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                  <Button variant="outline" className="border-white/40 text-white hover:bg-white/20 hover:text-white bg-white/10">
                     <LogIn className="w-4 h-4 mr-2" />
                     Login
                   </Button>
@@ -210,7 +210,7 @@ export default function BatikPoolsLanding() {
             <Button 
               size="lg" 
               variant="outline" 
-              className="border-white/20 text-white hover:bg-white/10 text-lg px-8 py-4"
+              className="border-white/40 text-white hover:bg-white/20 hover:text-white bg-white/10 text-lg px-8 py-4 font-semibold"
               onClick={() => setShowLogin(true)}
             >
               <LogIn className="w-5 h-5 mr-2" />
@@ -298,7 +298,7 @@ export default function BatikPoolsLanding() {
           <div className="text-center">
             <Button 
               variant="outline" 
-              className="border-white/20 text-white hover:bg-white/10"
+              className="border-white/40 text-white hover:bg-white/20 hover:text-white bg-white/10 font-semibold"
               onClick={() => window.open('/live_draw', '_blank')}
             >
               <Eye className="w-4 h-4 mr-2" />
