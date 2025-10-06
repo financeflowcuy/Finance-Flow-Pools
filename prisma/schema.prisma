@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  balance   Int      @default(1000000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  bets      Bet[]
+  winnings  Winning[]
+}
+
+model LotteryDraw {
+  id          String   @id @default(cuid())
+  numbers     String   // JSON array of numbers
+  betType     String   // "2D", "3D", or "4D"
+  seed        String   // For provable fairness
+  seedHash    String   // Hash of the seed
+  signature   String   // Digital signature
+  publicKey   String   // Public key for verification
+  drawTime    DateTime @default(now())
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  bets        Bet[]
+  winnings    Winning[]
+}
+
+model Bet {
+  id           String   @id @default(cuid())
+  userId       String
+  drawId       String?
+  numbers      String   // JSON array of selected numbers
+  betType      String   // "2D", "3D", or "4D"
+  amount       Int
+  status       String   @default("pending") // "pending", "won", "lost"
+  encryptedData String? // JSON string with encrypted data, iv, and tag
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  user         User     @relation(fields: [userId], references: [id])
+  draw         LotteryDraw? @relation(fields: [drawId], references: [id])
+  winning      Winning?
+}
+
+model Winning {
+  id       String   @id @default(cuid())
+  betId    String   @unique
+  userId   String
+  drawId   String
+  amount   Int
+  numbers  String   // Winning numbers
+  claimed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  bet      Bet      @relation(fields: [betId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+  draw     LotteryDraw @relation(fields: [drawId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // "bet_placed", "draw_completed", "winning_paid"
+  userId    String?
+  data      String   // JSON data
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
