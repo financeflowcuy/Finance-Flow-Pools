@@ -1,0 +1,335 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+  html {
+    overflow-x: hidden;
+  }
+  
+  /* Fix container queries */
+  @container {
+    container-type: inline-size;
+  }
+}
+
+/* Custom scrollbar styles */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
+/* Custom scrollbar for webkit browsers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Prevent horizontal scrolling globally */
+.no-overflow-x {
+  overflow-x: hidden;
+}
+
+/* Ensure responsive images */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Fix for iOS Safari */
+@supports (-webkit-touch-callout: none) {
+  body {
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Fix grid layout issues */
+@layer utilities {
+  .container-safe {
+    width: 100%;
+    max-width: 100vw;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  @media (min-width: 640px) {
+    .container-safe {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .container-safe {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .container-safe {
+      max-width: 1280px;
+    }
+  }
+  
+  @media (min-width: 1536px) {
+    .container-safe {
+      max-width: 1536px;
+    }
+  }
+}
+
+/* Fix card component issues */
+@layer components {
+  .card-responsive {
+    width: 100%;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+  
+  .card-grid-fix {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    width: 100%;
+  }
+  
+  @media (min-width: 768px) {
+    .card-grid-fix {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .card-grid-fix {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .card-grid-fix {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+}
+
+/* Fix dialog positioning */
+@layer components {
+  .dialog-center-fix {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}
+
+/* Fix button overflow */
+@layer components {
+  .button-wrap-fix {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+}
+
+/* Fix navigation overflow */
+@layer components {
+  .nav-scroll-fix {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .nav-scroll-fix::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .nav-item-fix {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+/* Additional fixes for common overflow issues */
+@layer utilities {
+  .overflow-fix {
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-width: 100%;
+  }
+  
+  .responsive-container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+  
+  .flex-responsive {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    width: 100%;
+  }
+  
+  .grid-responsive {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    gap: 1rem;
+  }
+}
+
+/* Fix for specific components */
+@layer components {
+  .input-responsive {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  
+  .button-responsive {
+    min-width: 0;
+    flex-shrink: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .text-responsive {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+}
+
+/* Fix for mobile devices */
+@media (max-width: 768px) {
+  .mobile-fix {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+  
+  .mobile-text-fix {
+    font-size: clamp(0.875rem, 2.5vw, 1rem);
+    line-height: 1.5;
+  }
+  
+  .mobile-button-fix {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    min-height: 2.5rem;
+  }
+}
+
+/* Fix for tablets */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tablet-fix {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* Ensure all elements respect viewport */
+* {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Fix for absolute positioned elements */
+.absolute-fix {
+  position: absolute;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Fix for fixed positioned elements */
+.fixed-fix {
+  position: fixed;
+  max-width: 100vw;
+  overflow: hidden;
+}
